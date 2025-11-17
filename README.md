@@ -16,6 +16,7 @@ npm run storybook
 
 ## Project Architecture
 
+```
 calendar-component/
 ├── README.md
 ├── package.json
@@ -46,6 +47,7 @@ calendar-component/
 │ └── event.utils.ts
 └── styles/
 └── globals.css
+```
 
 ## Features
 
