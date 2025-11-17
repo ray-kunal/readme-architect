@@ -1,73 +1,56 @@
-# Welcome to your Lovable project
+# Calendar View — Interactive UI Component
 
-## Project info
+A fully interactive, accessible, and high-performance Calendar component built using React, TypeScript, Tailwind CSS, and Storybook, following the required assignment architecture.
 
-**URL**: https://lovable.dev/projects/59bba4ec-e805-4de8-a53f-d28727e380e8
+## Live Storybook
 
-## How can I edit this code?
+[Add your deployed Storybook URL here]
 
-There are several ways of editing your application.
+## Installation & Setup
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/59bba4ec-e805-4de8-a53f-d28727e380e8) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
 npm run dev
+npm run storybook
 ```
 
-**Edit a file directly in GitHub**
+## Project Architecture
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+calendar-component/
+├── README.md
+├── package.json
+├── tsconfig.json
+├── tailwind.config.js
+├── .storybook/
+│ ├── main.ts
+│ └── preview.ts
+└── src/
+├── components/
+│ ├── Calendar/
+│ │ ├── CalendarView.tsx
+│ │ ├── CalendarView.types.ts
+│ │ ├── CalendarView.stories.tsx
+│ │ ├── MonthView.tsx
+│ │ ├── WeekView.tsx
+│ │ ├── CalendarCell.tsx
+│ │ └── EventModal.tsx
+│ └── primitives/
+│ ├── Button.tsx
+│ ├── Modal.tsx
+│ └── Select.tsx
+├── hooks/
+│ ├── useCalendar.ts
+│ └── useEventManager.ts
+├── utils/
+│ ├── date.utils.ts
+│ └── event.utils.ts
+└── styles/
+└── globals.css
 
-**Use GitHub Codespaces**
+## Features
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/59bba4ec-e805-4de8-a53f-d28727e380e8) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- Month & Week Views
+- Add / Edit / Delete Events
+- Event Modal with validation
+- Responsive design
+- Keyboard accessibility (WCAG 2.1 AA)
