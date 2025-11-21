@@ -1,0 +1,270 @@
+import { Meta } from "@storybook/blocks";
+
+<Meta title="📐 Architecture/Overview" />
+
+# 📐 Calendar Component Architecture
+
+This documentation mirrors the **ARCHITECTURE_README.md** and describes the **system architecture**, **component hierarchy**, **state flow**, and **design principles** used to build the Calendar View assignment.
+
+---
+
+## 🧱 Core Architecture Overview
+
+The Calendar component follows a **modular**, **scalable**, and **type‑safe** architecture:
+
+```
+src/
+├── components/
+│   ├── Calendar/
+│   │   ├── CalendarView.tsx          (orchestrator)
+│   │   ├── MonthView.tsx             (month grid rendering)
+│   │   ├── WeekView.tsx              (week grid + time slots)
+│   │   ├── CalendarCell.tsx          (individual date cell)
+│   │   ├── EventModal.tsx            (add/edit/delete events)
+│   │   └── CalendarView.types.ts     (shared types)
+│   └── primitives/
+│       ├── Button.tsx
+│       ├── Modal.tsx
+│       └── Select.tsx
+│
+├── hooks/
+│   ├── useCalendar.ts                (view state)
+│   └── useEventManager.ts            (event state)
+│
+└── utils/
+    ├── date.utils.ts                 (date calculations)
+    └── event.utils.ts                (event logic)
+```
+
+### 🎯 Architecture Goals
+
+- **Clean Separation**: UI, state, and utilities in distinct layers
+- **Reusable Components**: "Primitive" components can be used anywhere
+- **Type Safety**: Strong TypeScript typing throughout
+- **Performance**: Optimized renders and memoization
+- **Accessibility**: ARIA attributes and keyboard navigation built-in
+
+---
+
+## 🧩 Component Breakdown
+
+### **CalendarView** (Orchestrator)
+
+- **Location**: `src/components/Calendar/CalendarView.tsx`
+- **Role**: Parent component that orchestrates the entire calendar
+- **Responsibilities**:
+  - Switches between Month/Week views
+  - Controls navigation (next, prev, today)
+  - Provides props and callbacks for event management
+  - Manages view state via `useCalendar` hook
+
+### **MonthView** (42-Day Grid)
+
+- **Location**: `src/components/Calendar/MonthView.tsx`
+- **Role**: Renders a standard calendar month grid
+- **Features**:
+  - 42-day grid (includes days from prev/next months)
+  - Highlights today's date
+  - Truncates events per cell
+  - Click to open EventModal
+
+### **WeekView** (Time Grid)
+
+- **Location**: `src/components/Calendar/WeekView.tsx`
+- **Role**: Renders a 24h × 7-day time grid view
+- **Features**:
+  - Time slot layout with hourly divisions
+  - Calculates event block height and placement
+  - Supports overlapping event rendering
+  - Responsive to different screen sizes
+
+### **CalendarCell** (Individual Date)
+
+- **Location**: `src/components/Calendar/CalendarCell.tsx`
+- **Role**: Renders a single date cell with events
+- **Features**:
+  - Displays date number
+  - Lists events for that date
+  - Manages keyboard focus (Tab, Arrow keys)
+  - ARIA labels for accessibility
+
+### **EventModal** (Form)
+
+- **Location**: `src/components/Calendar/EventModal.tsx`
+- **Role**: Handles event CRUD operations
+- **Features**:
+  - Add new events
+  - Edit existing events
+  - Delete events
+  - Form validation
+  - Controlled form inputs
+
+---
+
+## ⚙️ State Management Architecture
+
+The calendar uses **Zustand** for lightweight, performant state management split into two concerns:
+
+### **useCalendar.ts** (View State)
+
+```typescript
+interface CalendarState {
+  currentDate: Date; // Currently selected/viewed date
+  viewMode: "month" | "week";
+
+  // Actions
+  setCurrentDate: (date: Date) => void;
+  nextMonth: () => void;
+  previousMonth: () => void;
+  jumpToToday: () => void;
+  setViewMode: (mode: "month" | "week") => void;
+}
+```
+
+**Usage**: Controls which date is visible and which view mode is active.
+
+### **useEventManager.ts** (Event State)
+
+```typescript
+interface EventManagerState {
+  events: CalendarEvent[];
+  eventMap: Map<string, CalendarEvent>; // For O(1) lookups
+  activeEventId: string | null;
+
+  // Actions
+  addEvent: (event: Omit<CalendarEvent, "id">) => void;
+  updateEvent: (id: string, updates: Partial<CalendarEvent>) => void;
+  deleteEvent: (id: string) => void;
+  setActiveEventId: (id: string | null) => void;
+  getEventById: (id: string) => CalendarEvent | undefined;
+  getEventsForDate: (date: Date) => CalendarEvent[];
+  getEventsForRange: (startDate: Date, endDate: Date) => CalendarEvent[];
+}
+```
+
+**Usage**: Manages all events, with helper methods for date-range queries.
+
+---
+
+## 🧠 Utilities
+
+### **date.utils.ts** (Date Calculations)
+
+Key functions:
+
+- `getCalendarGrid(date)` - Generate a 42-day grid for a month
+- `isSameDay(date1, date2)` - Check if two dates are the same day
+- `daysBetween(start, end)` - Calculate days between dates
+- `generateWeekGrid(date)` - Generate 7-day grid starting from a date
+- `getWeekOfMonth(date)` - Get which week of the month a date falls in
+
+### **event.utils.ts** (Event Logic)
+
+Key functions:
+
+- `detectOverlappingEvents(events)` - Find overlapping events
+- `adjustEventBlockPositions(events)` - Calculate column positions for overlaps
+- `getEventColorClass(color)` - Map event color to Tailwind class
+- `formatEventTime(startDate, endDate)` - Format time display
+
+---
+
+## 🎨 Design System Principles
+
+### **Tailwind Design Tokens**
+
+- **Colors**: Primary (blue), Neutral (gray), Semantic (red/green)
+- **Spacing**: 4px base unit (0.25rem increments)
+- **Typography**: Nunito Sans (SaaS-style)
+- **Shadows**: Subtle elevation for cards and modals
+- **Borders**: 1px neutral borders for structure
+
+### **UI Philosophy**
+
+- **Minimalistic**: Clean, SaaS-style interface
+- **Predictable**: Consistent spacing and alignment
+- **Accessibility-First**: WCAG 2.1 AA compliance
+- **Responsive**: Mobile-first design approach
+
+---
+
+## 📱 Responsive System
+
+| Device                       | Layout Behavior                                 |
+| ---------------------------- | ----------------------------------------------- |
+| **Mobile** (< 640px)         | Collapsed grid, scrollable lists, single-column |
+| **Tablet** (640px - 1024px)  | Two-column responsive, larger touch targets     |
+| **Desktop** (> 1024px)       | Full 7-column grid + week view, optimal spacing |
+| **Large Desktop** (> 1440px) | Max-width container, centered layout            |
+
+Breakpoints align with Tailwind's standard: `sm`, `md`, `lg`, `xl`, `2xl`.
+
+---
+
+## ♿ Accessibility Implementation
+
+### Keyboard Navigation
+
+- **Arrow Keys**: Move between calendar cells
+- **Enter**: Open event modal for selected cell
+- **Escape**: Close modal
+- **Tab**: Navigate between interactive elements
+- **Space**: Activate buttons (role="button")
+
+### ARIA Roles & Attributes
+
+- `role="grid"` on month view container
+- `role="gridcell"` on individual date cells
+- `role="dialog"` on EventModal
+- `aria-label="[Date]"` on cells
+- `aria-current="date"` on today's cell
+- `aria-busy` during async operations (if applicable)
+
+### Screen Reader Support
+
+- Events are announced with date context
+- Modal title announces purpose (Add/Edit Event)
+- Form fields have associated labels
+- Dynamic content uses `aria-live="polite"`
+
+---
+
+## ⚡ Performance Design
+
+### Optimization Techniques
+
+- **React.memo()**: Memoize cell components to prevent unnecessary re-renders
+- **useMemo + useCallback**: Stabilize references for event queries
+- **Zustand immutability**: Shallow comparison for store updates
+- **Event delegation**: Single modal instance, not per event
+
+### Performance Targets
+
+- Initial render: < 300ms
+- Frame time during interaction: < 16ms
+- Support for 500+ concurrent events
+- Smooth scrolling on mobile (60fps)
+
+### Recommended Optimizations (Future)
+
+- Virtual scrolling for large event lists
+- Lazy load event details
+- Indexed event queries by date range
+
+---
+
+## 📌 Key Principles to Remember
+
+1. **One Source of Truth**: Events in `useEventManager`, view state in `useCalendar`
+2. **Immutable Updates**: Always create new objects, never mutate directly
+3. **Composition Over Inheritance**: Build complex UI from small components
+4. **Type Everything**: Use TypeScript interfaces for all data structures
+5. **Accessibility First**: Built into component design, not an afterthought
+
+---
+
+## 📧 Next Steps
+
+- See the **Components** section to explore individual component docs
+- Visit **State Management** to understand the hooks
+- Check **Stories** for interactive examples

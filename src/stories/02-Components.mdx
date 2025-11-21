@@ -1,0 +1,262 @@
+import { Meta } from "@storybook/blocks";
+
+<Meta title="📦 Components/Overview" />
+
+# Calendar Components Guide
+
+This section documents all components in the Calendar system, their purposes, and how to use them.
+
+---
+
+## Component Hierarchy
+
+```
+CalendarView (Orchestrator)
+├── MonthView
+│   └── CalendarCell[] (42 cells)
+├── WeekView
+│   └── Time Grid with Event Blocks
+└── EventModal
+    └── Form (add/edit/delete events)
+```
+
+---
+
+## Core Components
+
+### **CalendarView** (Orchestrator)
+
+**File**: `src/components/Calendar/CalendarView.tsx`
+
+**Purpose**: Main orchestrator component that manages view switching and event callbacks.
+
+**Props**:
+
+```typescript
+interface CalendarViewProps {
+  onDateClick?: (date: Date) => void;
+  onEventClick?: (eventId: string) => void;
+}
+```
+
+**Responsibilities**:
+
+- Switch between Month/Week views
+- Provide navigation controls (prev, next, today)
+- Handle date and event clicks
+- Pass state to child components
+
+**Key Features**:
+
+- View mode toggle button
+- Navigation controls
+- Modal management for event creation/editing
+
+---
+
+### **MonthView** (42-Day Grid)
+
+**File**: `src/components/Calendar/MonthView.tsx`
+
+**Purpose**: Renders a standard month calendar with a 42-day grid.
+
+**Features**:
+
+- Displays 6 rows × 7 columns (includes padding days from adjacent months)
+- Highlights today's date with blue background
+- Truncates events if more than 2-3 per cell
+- Click to select date and open event modal
+- Responsive grid layout
+
+**Layout**:
+
+```
+[Sun] [Mon] [Tue] [Wed] [Thu] [Fri] [Sat]
+[27]  [28]  [29]  [30]  [1]   [2]   [3]   ← Last month (grayed out)
+[4]   [5]   [6]   [7]   [8]   [9]   [10]
+[11]  [12]  [13]  [14]  [15]  [16]  [17]
+[18]  [19]  [20]  [21]  [22]  [23]  [24]  ← Today (highlighted)
+[25]  [26]  [27]  [28]  [29]  [30]  [31]
+[1]   [2]   [3]   [4]   [5]   [6]   [7]   ← Next month (grayed out)
+```
+
+---
+
+### **WeekView** (7-Day Time Grid)
+
+**File**: `src/components/Calendar/WeekView.tsx`
+
+**Purpose**: Renders a 7-day, 24-hour time grid view for detailed event scheduling.
+
+**Features**:
+
+- Hourly time slots from 00:00 to 23:00
+- 7 columns for Monday-Sunday
+- Event blocks with correct height based on duration
+- Handles overlapping events with side-by-side positioning
+- Click on time slot to create event
+
+**Layout**:
+
+```
+      [Mon]   [Tue]   [Wed]   [Thu]   [Fri]   [Sat]   [Sun]
+08:00 [                                                        ]
+      [ Event A ----  [Event B ----
+09:00 [                              ]
+      [ Event A ----  [Event C ----
+10:00 [                              ]
+      [                              ]
+```
+
+---
+
+### **CalendarCell** (Single Date)
+
+**File**: `src/components/Calendar/CalendarCell.tsx`
+
+**Purpose**: Renders a single date cell with event list.
+
+**Props**:
+
+```typescript
+interface CalendarCellProps {
+  date: Date;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+  events: CalendarEvent[];
+  onClick?: (date: Date) => void;
+  onEventClick?: (eventId: string, e: React.MouseEvent) => void;
+}
+```
+
+**Features**:
+
+- Date number display
+- Event list (truncated if needed)
+- Visual indicators for event count
+- Keyboard focus support (tabindex)
+- ARIA labels for screen readers
+
+**Styling**:
+
+- Current month: white background
+- Today: blue background with bold text
+- Other months: light gray background
+- Hover: subtle shadow on desktop
+
+---
+
+### **EventModal** (Form)
+
+**File**: `src/components/Calendar/EventModal.tsx`
+
+**Purpose**: Modal dialog for creating, editing, and deleting events.
+
+**Form Fields**:
+
+```typescript
+interface EventFormData {
+  title: string; // Required, 1-255 chars
+  description?: string; // Optional
+  startDate: Date; // Required
+  endDate: Date; // Required (must be ≥ startDate)
+  color: string; // Predefined colors
+}
+```
+
+**Features**:
+
+- Modal dialog (centered, backdrop)
+- Form validation
+- Date/time pickers
+- Color selection
+- Add/Edit/Delete actions
+- Close on Escape key
+- Form error messages
+
+**Actions**:
+
+- **Add**: Creates new event in store
+- **Edit**: Updates existing event
+- **Delete**: Removes event with confirmation
+
+---
+
+## Primitive Components
+
+### **Button** (Reusable Button)
+
+**File**: `src/components/primitives/Button.tsx`
+
+**Usage**:
+
+```tsx
+<Button onClick={handleClick} variant="primary" size="md">
+  Click Me
+</Button>
+```
+
+---
+
+### **Modal** (Dialog Container)
+
+**File**: `src/components/primitives/Modal.tsx`
+
+**Usage**:
+
+```tsx
+<Modal isOpen={isOpen} onClose={handleClose} title="Event">
+  {/* content */}
+</Modal>
+```
+
+---
+
+## Component Props & TypeScript
+
+All components are fully typed with TypeScript interfaces in `CalendarView.types.ts`:
+
+```typescript
+export interface CalendarViewProps {
+  onDateClick?: (date: Date) => void;
+  onEventClick?: (eventId: string) => void;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  startDate: Date;
+  endDate: Date;
+  color: string;
+}
+```
+
+---
+
+## Component Communication
+
+Components communicate via:
+
+1. **Props (Down)**: Parent → Child data flow
+2. **Callbacks (Up)**: Child → Parent event handling
+3. **Zustand Store**: Cross-component state (events, calendar state)
+4. **Context**: Theme and global settings (if needed)
+
+---
+
+## Best Practices When Using Components
+
+✅ **Do**:
+
+- Pass stable function references (use `useCallback`)
+- Memoize components that receive function props (use `React.memo`)
+- Keep components focused on one responsibility
+- Use TypeScript types for all props
+
+❌ **Don't**:
+
+- Directly mutate state objects
+- Pass inline object literals to component props
+- Use string refs (use `useRef` instead)
+- Skip accessibility attributes (aria-\*, role)

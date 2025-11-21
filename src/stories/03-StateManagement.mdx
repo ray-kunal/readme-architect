@@ -1,0 +1,420 @@
+import { Meta } from "@storybook/blocks";
+
+<Meta title="🧠 State Management/Overview" />
+
+# State Management Guide
+
+This document explains how state flows through the Calendar application using **Zustand** stores.
+
+---
+
+## Architecture Overview
+
+The calendar uses two independent Zustand stores:
+
+```
+┌─────────────────────────────────────────┐
+│         React Components                 │
+│   (CalendarView, MonthView, etc.)       │
+└──────────────┬──────────────────────────┘
+               │
+        ┌──────┴──────┐
+        ▼             ▼
+    ┌───────────┐  ┌─────────────────┐
+    │ useCalendar   │ useEventManager │
+    │ (View State)  │ (Event State)   │
+    └───────────┘  └─────────────────┘
+        │             │
+    [currentDate]  [events]
+    [viewMode]     [eventMap]
+                   [activeEventId]
+```
+
+---
+
+## useCalendar Hook
+
+**File**: `src/hooks/useCalendar.ts`
+
+Manages the **view state** of the calendar (what the user is currently viewing).
+
+### State Properties
+
+```typescript
+interface CalendarState {
+  currentDate: Date; // Currently viewed date
+  viewMode: "month" | "week"; // Current view type
+}
+```
+
+### Actions
+
+```typescript
+// Set the current date to a specific date
+setCurrentDate: (date: Date) => void;
+
+// Move to the next month
+nextMonth: () => void;
+
+// Move to the previous month
+previousMonth: () => void;
+
+// Jump back to today
+jumpToToday: () => void;
+
+// Switch between month and week view
+setViewMode: (mode: 'month' | 'week') => void;
+```
+
+### Usage Example
+
+```tsx
+import { useCalendar } from "@/hooks/useCalendar";
+
+function MyComponent() {
+  const { currentDate, viewMode, setViewMode, nextMonth } = useCalendar();
+
+  return (
+    <div>
+      <p>Current Date: {currentDate.toLocaleDateString()}</p>
+      <p>View: {viewMode}</p>
+      <button onClick={nextMonth}>Next Month</button>
+      <button onClick={() => setViewMode("week")}>Switch to Week</button>
+    </div>
+  );
+}
+```
+
+### State Changes
+
+| Action                | Before   | After        |
+| --------------------- | -------- | ------------ |
+| `nextMonth()`         | Nov 15   | Dec 15       |
+| `previousMonth()`     | Nov 15   | Oct 15       |
+| `jumpToToday()`       | Any date | Today's date |
+| `setViewMode('week')` | 'month'  | 'week'       |
+
+---
+
+## useEventManager Hook
+
+**File**: `src/hooks/useEventManager.ts`
+
+Manages the **event state** of the calendar (all events and their metadata).
+
+### State Properties
+
+```typescript
+interface EventManagerState {
+  events: CalendarEvent[]; // Array of all events
+  eventMap: Map<string, CalendarEvent>; // O(1) lookup by ID
+  activeEventId: string | null; // Currently selected event
+}
+
+interface CalendarEvent {
+  id: string; // Unique identifier (auto-generated)
+  title: string; // Event name
+  description?: string; // Optional details
+  startDate: Date; // Start time
+  endDate: Date; // End time
+  color: string; // Event color category
+}
+```
+
+### Actions
+
+#### Add Event
+
+```typescript
+addEvent: (event: Omit<CalendarEvent, 'id'>) => void;
+
+// Usage
+const { addEvent } = useEventManager();
+
+addEvent({
+  title: 'Team Meeting',
+  description: 'Discuss Q4 goals',
+  startDate: new Date(2025, 10, 21, 14, 0),  // Nov 21, 2:00 PM
+  endDate: new Date(2025, 10, 21, 15, 0),    // 3:00 PM
+  color: 'blue'
+});
+
+// ID is auto-generated: "event-1700592000000-abc123xyz"
+```
+
+#### Update Event
+
+```typescript
+updateEvent: (id: string, updates: Partial<CalendarEvent>) => void;
+
+// Usage
+const { updateEvent } = useEventManager();
+
+updateEvent('event-1700592000000-abc123xyz', {
+  title: 'Team Standup',      // Only update what changed
+  endDate: new Date(2025, 10, 21, 15, 30)
+});
+```
+
+#### Delete Event
+
+```typescript
+deleteEvent: (id: string) => void;
+
+// Usage
+const { deleteEvent } = useEventManager();
+
+deleteEvent('event-1700592000000-abc123xyz');
+```
+
+#### Get Event by ID
+
+```typescript
+getEventById: (id: string) => CalendarEvent | undefined;
+
+// Usage
+const { getEventById } = useEventManager();
+
+const event = getEventById("event-1700592000000-abc123xyz");
+if (event) {
+  console.log(event.title);
+}
+```
+
+#### Get Events for a Date
+
+```typescript
+getEventsForDate: (date: Date) => CalendarEvent[];
+
+// Usage
+const { getEventsForDate } = useEventManager();
+
+const todayEvents = getEventsForDate(new Date());
+// Returns all events that occur on this date
+```
+
+#### Get Events in a Date Range
+
+```typescript
+getEventsForRange: (startDate: Date, endDate: Date) => CalendarEvent[];
+
+// Usage
+const { getEventsForRange } = useEventManager();
+
+const weekEvents = getEventsForRange(
+  new Date(2025, 10, 21),  // Nov 21
+  new Date(2025, 10, 27)   // Nov 27
+);
+```
+
+#### Set Active Event
+
+```typescript
+setActiveEventId: (id: string | null) => void;
+
+// Usage
+const { setActiveEventId } = useEventManager();
+
+setActiveEventId('event-1700592000000-abc123xyz');  // Select event
+setActiveEventId(null);                             // Deselect
+```
+
+---
+
+## Immutability Pattern
+
+All state updates follow an **immutable** pattern:
+
+```typescript
+// ❌ WRONG (mutates state)
+event.title = "New Title";
+
+// ✅ CORRECT (creates new object)
+updateEvent(id, { title: "New Title" });
+```
+
+The store handles immutability internally:
+
+```typescript
+deleteEvent: (id) => {
+  set((state) => {
+    const newMap = new Map(state.eventMap); // Copy the map
+    newMap.delete(id); // Modify the copy
+
+    return {
+      events: state.events.filter((e) => e.id !== id), // New array
+      eventMap: newMap, // New map
+      activeEventId: state.activeEventId === id ? null : state.activeEventId,
+    };
+  });
+};
+```
+
+---
+
+## Store Access Patterns
+
+### Pattern 1: Hook Usage (Recommended)
+
+```tsx
+function MyComponent() {
+  const { events, addEvent } = useEventManager();
+  // Component re-renders when 'events' changes
+
+  return <div>{events.length} events</div>;
+}
+```
+
+### Pattern 2: Direct Store Access (One-time reads)
+
+```tsx
+function MyComponent() {
+  useEffect(() => {
+    const allEvents = useEventManager.getState().events;
+    console.log("Total events:", allEvents.length);
+  }, []);
+
+  // Does NOT re-render when events change
+}
+```
+
+### Pattern 3: Subscribe (Advanced)
+
+```tsx
+useEffect(() => {
+  const unsubscribe = useEventManager.subscribe(
+    (state) => state.events,
+    (events) => {
+      console.log("Events changed:", events);
+    }
+  );
+
+  return unsubscribe;
+}, []);
+```
+
+---
+
+## Performance Considerations
+
+### ✅ Good Practices
+
+```tsx
+// Only subscribes to 'events'
+const events = useEventManager((state) => state.events);
+
+// Memoize callbacks to avoid re-renders
+const handleAdd = useCallback((event) => {
+  useEventManager.getState().addEvent(event);
+}, []);
+```
+
+### ⚠️ Potential Issues
+
+```tsx
+// Subscribes to ENTIRE store
+const state = useEventManager();  // Re-renders on any change
+
+// Store function in component (creates new ref each render)
+<button onClick={() => addEvent(data)}>  // ❌ Creates new function
+```
+
+---
+
+## Common Workflows
+
+### Workflow 1: Display Events for Current Week
+
+```tsx
+function WeekEventsList() {
+  const { currentDate, viewMode } = useCalendar();
+  const { getEventsForRange } = useEventManager();
+
+  const weekStart = new Date(currentDate);
+  weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+
+  const weekEvents = getEventsForRange(weekStart, weekEnd);
+
+  return (
+    <ul>
+      {weekEvents.map((event) => (
+        <li key={event.id}>{event.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Workflow 2: Create Event Modal
+
+```tsx
+function EventModal() {
+  const [title, setTitle] = useState("");
+  const [startDate, setStartDate] = useState(new Date());
+  const { addEvent } = useEventManager();
+
+  const handleSubmit = () => {
+    addEvent({
+      title,
+      startDate,
+      endDate: new Date(startDate.getTime() + 60 * 60 * 1000),
+      color: "blue",
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} />
+      <button type="submit">Create</button>
+    </form>
+  );
+}
+```
+
+### Workflow 3: Edit Selected Event
+
+```tsx
+function EditEventModal() {
+  const { activeEventId, getEventById, updateEvent } = useEventManager();
+  const event = activeEventId ? getEventById(activeEventId) : null;
+
+  if (!event) return null;
+
+  const handleSave = (updates) => {
+    updateEvent(activeEventId, updates);
+  };
+
+  return <EventForm initialValues={event} onSave={handleSave} />;
+}
+```
+
+---
+
+## Debugging Tips
+
+### View Current Store State
+
+```typescript
+// In browser console
+useEventManager.getState(); // See all state
+useCalendar.getState(); // See calendar state
+```
+
+### Monitor Store Changes
+
+```typescript
+useEventManager.subscribe(console.log); // Logs every change
+```
+
+### Reset Store (Testing)
+
+```typescript
+useEventManager.setState({
+  events: [],
+  eventMap: new Map(),
+  activeEventId: null,
+});
+```
